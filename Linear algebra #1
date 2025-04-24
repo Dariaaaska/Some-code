@@ -1,7 +1,9 @@
-# Запустите этот код
+### Импорт библиотек
+```
 import numpy as np
 
 import scipy.linalg as sla
 
 import matplotlib.pyplot as plt
 %matplotlib inline
+```
