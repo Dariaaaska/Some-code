@@ -110,8 +110,32 @@ class BatchNormalization(Module):
         :param input: array of shape (batch_size, num_features)
         :return: array of shape (batch_size, num_features)
         """
-        # replace with your code ｀、ヽ｀、ヽ(ノ＞＜)ノ ヽ｀☂｀、ヽ
-        return super().compute_output(input)
+        if self.is_train:
+            batch_size = input.shape[0]
+            
+            self.mean = np.mean(input, axis=0)
+            self.input_mean = input - self.mean
+            self.var = np.var(input, axis=0)
+            
+            self.sqrt_var = np.sqrt(self.var + self.eps)
+            self.inv_sqrt_var = 1.0 / self.sqrt_var
+            
+            self.norm_input = self.input_mean * self.inv_sqrt_var
+
+            self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * self.mean
+            
+            unbiased_var = self.var * (batch_size / (batch_size - 1)) if batch_size > 1 else self.var
+            self.running_var = (1 - self.momentum) * self.running_var + self.momentum * unbiased_var
+
+            output = self.norm_input
+        else:
+            self.norm_input = (input - self.running_mean) / np.sqrt(self.running_var + self.eps)
+            output = self.norm_input
+
+        if self.affine:
+            output = output * self.weight + self.bias
+
+        return output
 
     def compute_grad_input(self, input: np.ndarray, grad_output: np.ndarray) -> np.ndarray:
         """
@@ -119,16 +143,30 @@ class BatchNormalization(Module):
         :param grad_output: array of shape (batch_size, num_features)
         :return: array of shape (batch_size, num_features)
         """
-        # replace with your code ｀、ヽ｀、ヽ(ノ＞＜)ノ ヽ｀☂｀、ヽ
-        return super().compute_grad_input(input, grad_output)
+        dx_hat = grad_output * self.weight if self.affine else grad_output
+
+        if self.is_train:
+            batch_size = input.shape[0]
+            
+            sum_dx_hat = np.sum(dx_hat, axis=0)
+            sum_dx_hat_x_hat = np.sum(dx_hat * self.norm_input, axis=0)
+
+            grad_input = (self.inv_sqrt_var / batch_size) * (
+                batch_size * dx_hat - sum_dx_hat - self.norm_input * sum_dx_hat_x_hat
+            )
+        else:
+            grad_input = dx_hat / np.sqrt(self.running_var + self.eps)
+
+        return grad_input
 
     def update_grad_parameters(self, input: np.ndarray, grad_output: np.ndarray):
         """
         :param input: array of shape (batch_size, num_features)
         :param grad_output: array of shape (batch_size, num_features)
         """
-        # replace with your code ｀、ヽ｀、ヽ(ノ＞＜)ノ ヽ｀☂｀、ヽ
-        super().update_grad_parameters(input, grad_output)
+        if self.affine:
+            self.grad_weight += np.sum(grad_output * self.norm_input, axis=0)
+            self.grad_bias += np.sum(grad_output, axis=0)
 
     def zero_grad(self):
         if self.affine:
