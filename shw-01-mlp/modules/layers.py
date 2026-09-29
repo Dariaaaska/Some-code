@@ -233,7 +233,9 @@ class Sequential(Module):
         :param input: array of size matching the input size of the first layer
         :return: array of size matching the output size of the last layer
         """
+        self.inputs = []
         for module in self.modules:
+            self.inputs.append(input)
             input = module(input)
         return input
 
@@ -243,8 +245,8 @@ class Sequential(Module):
         :param grad_output: array of size matching the output size of the last layer
         :return: array of size matching the input size of the first layer
         """
-        for module in reversed(self.modules):
-            grad_output = module.backward(module.input, grad_output)
+        for module, layer_input in zip(reversed(self.modules), reversed(self.inputs)):
+            grad_output = module.backward(layer_input, grad_output)
         return grad_output
 
     def __getitem__(self, item):
