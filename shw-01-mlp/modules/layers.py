@@ -244,7 +244,7 @@ class Sequential(Module):
         :return: array of size matching the input size of the first layer
         """
         for module in reversed(self.modules):
-            grad_output = module.compute_grad_input(module.input, grad_output)
+            grad_output = module.backward(module.input, grad_output)
         return grad_output
 
     def __getitem__(self, item):
