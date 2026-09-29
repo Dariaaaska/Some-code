@@ -1,6 +1,8 @@
 import numpy as np
+from typing import Optional
 from typing import List
 from .base import Module
+
 
 
 class Linear(Module):
@@ -70,6 +72,70 @@ class Linear(Module):
         out_features, in_features = self.weight.shape
         return f'Linear(in_features={in_features}, out_features={out_features}, ' \
                f'bias={not self.bias is None})'
+
+
+class LowRankLinear(Module):
+
+    def __init__(self, in_features: int, out_features: int, max_rank: Optional[int] = None, bias: bool = True):
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+
+        min_dim = min(in_features, out_features)
+        if max_rank is None or max_rank >= min_dim:
+            self.rank = min_dim
+        else:
+            self.rank = max_rank
+
+        self.W1 = np.random.uniform(-1, 1, (self.rank, in_features)) / np.sqrt(in_features)
+        self.W2 = np.random.uniform(-1, 1, (out_features, self.rank)) / np.sqrt(self.rank)
+        self.bias = np.random.uniform(-1, 1, out_features) / np.sqrt(in_features) if bias else None
+
+        self.grad_W1 = np.zeros_like(self.W1)
+        self.grad_W2 = np.zeros_like(self.W2)
+        self.grad_bias = np.zeros_like(self.bias) if bias else None
+
+    def compute_output(self, input: np.ndarray) -> np.ndarray:
+        z = input @ self.W1.T
+        output = z @ self.W2.T
+        if self.b is not None:
+            output = output + self.b
+        return output
+
+    def compute_grad_input(self, input: np.ndarray, grad_output: np.ndarray) -> np.ndarray:
+        grad_z = grad_output @ self.W2
+        grad_input = grad_z @ self.W1
+        return grad_input
+
+    def update_grad_parameters(self, input: np.ndarray, grad_output: np.ndarray):
+        z = input @ self.W1.T
+        self.grad_W2 = grad_output.T @ z
+        if self.b is not None:
+            self.grad_b = np.sum(grad_output, axis=0)
+
+        grad_z = grad_output @ self.W2
+        self.grad_W1 = grad_z.T @ input
+
+    def zero_grad(self):
+        self.grad_W1.fill(0.0)
+        self.grad_W2.fill(0.0)
+        if self.b is not None:
+            self.grad_b.fill(0.0)
+
+    def parameters(self) -> List[np.ndarray]:
+        if self.b is not None:
+            return [self.W1, self.W2, self.b]
+        return [self.W1, self.W2]
+
+    def parameters_grad(self) -> List[np.ndarray]:
+        if self.b is not None:
+            return [self.grad_W1, self.grad_W2, self.grad_b]
+        return [self.grad_W1, self.grad_W2]
+
+    def __repr__(self) -> str:
+        return (f"LowRankLinear(in_features={self.in_features}, "
+                f"out_features={self.out_features}, rank={self.rank}, "
+                f"bias={self.b is not None})")
 
 
 class BatchNormalization(Module):
