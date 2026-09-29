@@ -15,7 +15,7 @@ class MSELoss(Criterion):
         :return: loss value
         """
         assert input.shape == target.shape, 'input and target shapes not matching'
-        return float(np.mean((input - target) ** 2))
+        return np.mean((input - target) ** 2)
 
     def compute_grad_input(self, input: np.ndarray, target: np.ndarray) -> np.ndarray:
         """
@@ -48,7 +48,7 @@ class CrossEntropyLoss(Criterion):
         q = np.full_like(input, self.label_smoothing / num_classes)
         q[np.arange(batch_size), target] += 1.0 - self.label_smoothing
 
-        return float(-np.sum(q * log_probs) / batch_size)
+        return -np.sum(q * log_probs) / batch_size
 
     def compute_grad_input(self, input: np.ndarray, target: np.ndarray) -> np.ndarray:
         """
