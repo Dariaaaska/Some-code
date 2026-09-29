@@ -110,7 +110,7 @@ class BatchNormalization(Module):
         :param input: array of shape (batch_size, num_features)
         :return: array of shape (batch_size, num_features)
         """
-        if self.is_train:
+        if self.training:
             batch_size = input.shape[0]
             
             self.mean = np.mean(input, axis=0)
@@ -145,7 +145,7 @@ class BatchNormalization(Module):
         """
         dx_hat = grad_output * self.weight if self.affine else grad_output
 
-        if self.is_train:
+        if self.training:
             batch_size = input.shape[0]
             
             sum_dx_hat = np.sum(dx_hat, axis=0)
