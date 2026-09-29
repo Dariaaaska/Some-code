@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.special import softmax
 from .base import Criterion
 from .activations import LogSoftmax
 
@@ -14,8 +15,7 @@ class MSELoss(Criterion):
         :return: loss value
         """
         assert input.shape == target.shape, 'input and target shapes not matching'
-        # replace with your code ｀、ヽ｀、ヽ(ノ＞＜)ノ ヽ｀☂｀、ヽ
-        return super().compute_output(input, target)
+        return float(np.mean((input - target) ** 2))
 
     def compute_grad_input(self, input: np.ndarray, target: np.ndarray) -> np.ndarray:
         """
@@ -24,8 +24,7 @@ class MSELoss(Criterion):
         :return: array of size (batch_size, *)
         """
         assert input.shape == target.shape, 'input and target shapes not matching'
-        # replace with your code ｀、ヽ｀、ヽ(ノ＞＜)ノ ヽ｀☂｀、ヽ
-        return super().compute_grad_input(input, target)
+        return 2.0 * (input - target) / input.size
 
 
 class CrossEntropyLoss(Criterion):
@@ -43,8 +42,13 @@ class CrossEntropyLoss(Criterion):
         :param target: labels array of size (batch_size, )
         :return: loss value
         """
-        # replace with your code ｀、ヽ｀、ヽ(ノ＞＜)ノ ヽ｀☂｀、ヽ
-        return super().compute_output(input, target)
+        batch_size, num_classes = input.shape
+        log_probs = self.log_softmax.compute_output(input)
+
+        q = np.full_like(input, self.label_smoothing / num_classes)
+        q[np.arange(batch_size), target] += 1.0 - self.label_smoothing
+
+        return float(-np.sum(q * log_probs) / batch_size)
 
     def compute_grad_input(self, input: np.ndarray, target: np.ndarray) -> np.ndarray:
         """
@@ -52,5 +56,11 @@ class CrossEntropyLoss(Criterion):
         :param target: labels array of size (batch_size, )
         :return: array of size (batch_size, num_classes)
         """
-        # replace with your code ｀、ヽ｀、ヽ(ノ＞＜)ノ ヽ｀☂｀、ヽ
-        return super().compute_grad_input(input, target)
+        batch_size, num_classes = input.shape
+        log_probs = self.log_softmax.compute_output(input)
+        p = np.exp(log_probs)
+
+        q = np.full_like(input, self.label_smoothing / num_classes)
+        q[np.arange(batch_size), target] += 1.0 - self.label_smoothing
+
+        return (p - q) / batch_size
